@@ -1,0 +1,14 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ *  Additional css handling for this project, without touching garland.
+ */
+
+/**
+ * Add a new css to bugfix the false nested li padding.
+ */
+function zzz_preprocess_node(&$vars) {
+  drupal_add_css(drupal_get_path('module', 'zzz') .'/zzz.css');
+}

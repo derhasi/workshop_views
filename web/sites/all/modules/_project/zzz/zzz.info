@@ -1,0 +1,6 @@
+name = ZZZ Project
+description = project specific
+package ZZZ
+core = 6.x
+
+version = project.x-dev
