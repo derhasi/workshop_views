@@ -1,0 +1,51 @@
+[collapse collapsed title=a) Der einfachste Node Teaser View=>page:actors]
+
+1. admin/build/views/add
+  - _View name_: a1
+  - _View description_: "einfacher NodeView als Seite: Liste aller Schauspieler"
+  - _View tag_: actors
+  - _View Type_: node
+1. **Default**:
+  - Basic Settings
+      - Title: "Actors"
+      - Row style: "Node"
+      - Row style options:
+          - Build mode: Teaser
+1. Add display: Page
+1. **Page**:
+  - Page settings:
+      - Path: "actors"
+
+Siehe: <a href="/actors">/actors</a>
+[/collapse]
+
+[collapse collapsed title= b) Pager setzen]
+1. **Default** oder **Page** __(da noch nicht übersteuert)__
+  - Basic Settings:
+      - Use Pager:
+          - auswählen: "Full Pager"
+          - Pager element: "0"
+      - Items per page:
+          - "10"
+          - Offset: "0"
+[/collapse]
+
+[collapse collapsed title= c) Pager ohne Reload]
+
+1. **Default** oder **Page**
+  - Basic Settings:
+      - Use Ajax:
+          - "Yes"
+[/collapse]
+
+[collapse collapsed title= d) Seite ins Menü setzen]
+
+1. **Page**:
+  - Page settings:
+      - Menu:
+          - "Normal Menu entry"
+              - Title: "Actors"
+              - Description: "Basic view of actors"
+              - Menu: "Primary links"
+              - Weight: 1
+[/collapse]
