@@ -1,0 +1,36 @@
+$view = new view;
+$view->name = 'a1';
+$view->description = 'einfacher NodeView als Seite: Liste aller Schauspieler';
+$view->tag = 'a';
+$view->view_php = '';
+$view->base_table = 'node';
+$view->is_cacheable = FALSE;
+$view->api_version = 2;
+$view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+$handler = $view->new_display('default', 'Defaults', 'default');
+$handler->override_option('access', array(
+  'type' => 'none',
+));
+$handler->override_option('cache', array(
+  'type' => 'none',
+));
+$handler->override_option('title', 'Actors');
+$handler->override_option('use_ajax', TRUE);
+$handler->override_option('use_pager', '1');
+$handler->override_option('row_plugin', 'node');
+$handler = $view->new_display('page', 'Page', 'page_1');
+$handler->override_option('path', 'actors');
+$handler->override_option('menu', array(
+  'type' => 'normal',
+  'title' => 'Actors',
+  'description' => 'Basic view of actors',
+  'weight' => '1',
+  'name' => 'primary-links',
+));
+$handler->override_option('tab_options', array(
+  'type' => 'none',
+  'title' => '',
+  'description' => '',
+  'weight' => 0,
+));
+
