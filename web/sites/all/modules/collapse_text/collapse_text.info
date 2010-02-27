@@ -1,0 +1,15 @@
+; $Id: collapse_text.info,v 1.4 2008/12/09 15:40:23 pukku Exp $
+
+name = Collapse Text
+description = "Input filter allowing plain text sections to become collapsible."
+dependencies[] = filter
+package = "Input filters"
+core = 6.x
+php = 5.2
+
+; Information added by drupal.org packaging script on 2008-12-15
+version = "6.x-1.1"
+core = "6.x"
+project = "collapse_text"
+datestamp = "1229359209"
+

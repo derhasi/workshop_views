@@ -1,0 +1,341 @@
+<?php
+// $Id: multi_node_add.module,v 1.2 2009/12/18 17:08:02 aronnovak Exp $
+
+/**
+ * @file
+ * This module allows to create multiple nodes using one page, one form submission.
+ * Uses AJAX.
+ *
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function multi_node_add_menu() {
+  $items = array();
+  $items['multi_node_add'] = array(
+    'title' => 'Create multiple nodes',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('multi_node_add_page'),
+    'access callback' => '_node_add_access',
+  );
+  foreach (node_get_types('types', NULL, TRUE) as $type) {
+    $type_url_str = str_replace('_', '-', $type->type);
+    $items['multi_node_add/'. $type_url_str] = array(
+      'title' => drupal_ucfirst($type->name),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('multi_node_add_page', 1),
+      'access callback' => 'node_access',
+      'access arguments' => array('create', $type->type),
+      'description' => $type->description,
+      'type' => MENU_LOCAL_TASK,
+    );
+    $items['multi_node_add/frame/'. $type_url_str] = array(
+      'type' => MENU_CALLBACK,
+      'access callback' => 'node_access',
+      'access arguments' => array('create', $type->type),
+      'page callback' => 'multi_node_add_frame_page',
+    );
+    $items['multi_node_add/status/'. $type_url_str .'/%node'] = array(
+      'type' => MENU_CALLBACK,
+      'access callback' => 'node_access',
+      'access arguments' => array('create', $type->type),
+      'page callback' => 'multi_node_add_frame_status',
+      'page arguments' => array(3),
+    );
+  }
+  return $items;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function multi_node_add_theme() {
+  $themes = array(
+    'multi_node_add_frame' => array(
+      'arguments' => array('form'),
+      'function' => 'theme_multi_node_add_frame',
+    ),
+    'multi_node_add_iframe' => array(
+      'arguments' => array('content'),
+      'function' => 'theme_multi_node_add_iframe',
+    ),
+  );
+  return $themes;
+}
+
+/**
+ * Provides a page where the user can select between the fields to use to create the nodes.
+ */
+function multi_node_add_page($form_state = array(), $type = FALSE) {
+
+  if ($type == FALSE) {
+    $type = array_shift(array_keys(node_get_types('names')));
+  }
+
+  drupal_add_js(drupal_get_path('module', 'multi_node_add') .'/multi_node_add.js');
+  $settings = array(
+    'callback' => url('multi_node_add/frame/'. $type, array('absolute' => TRUE)),
+  );
+  drupal_add_js(array('multi_node_add' => $settings), 'setting');
+
+  $type = str_replace('-', '_', $type);
+
+
+  $fields = array();
+  // CCK fields
+  if (function_exists('content_fields')) {
+    $fields += content_fields(NULL, $type);
+    foreach ($fields as $k => $field) {
+      if ($field['type_name'] != $type) {
+        unset($fields[$k]);
+      }
+    }
+  }
+  $fields += _multi_node_add_non_cck_fields($type);
+  $field_names = array();
+  $field_req = array();
+  $req_val = array();
+  foreach ($fields as $field) {
+    if ($field['field_def'][$field['field_name']]['#required'] == TRUE || $field['required'] == TRUE) {
+      if ($field['field_def'][$field['field_name']]['#required'] == TRUE) {
+        $field_req[$field['field_name']] = $field['field_def'][$field['field_name']]['#title'];
+      }
+      else {
+        if ($field['active']) {
+          $field_req[$field['field_name']] = $field['widget']['label'];
+        }
+      }
+      $req_val[$field['field_name']] = $field['field_name'];
+    }
+    else {
+      if (!empty($field['field_def'][$field['field_name']]['#title'])) {
+        $field_names[$field['field_name']] = $field['field_def'][$field['field_name']]['#title'];
+      }
+      if (!empty($field['widget']['label'])) {
+        if ($field['widget_active']) {
+          $field_names[$field['field_name']] = $field['widget']['label'];
+        }
+      }
+    }
+  }
+
+  $form = array();
+  $form['info']['#value'] = t('Current content-type: %type', array('%type' => $type));
+  $form['fields_req'] = array(
+    '#type' => 'checkboxes',
+    '#options' => $field_req,
+    '#default_value' => $req_val,
+    '#title' => t('Mandatory fields'),
+    '#attributes' => array('class' => 'multi-node-add'),
+    '#disabled' => TRUE,
+  );
+  $form['fields_to_utilize'] = array(
+    '#type' => 'checkboxes',
+    '#options' => $field_names,
+    '#title' => t('Fields to manage'),
+    '#attributes' => array('class' => 'multi-node-add'),
+    '#description' => t('Choose those fields that you would like to edit on the new nodes'),
+  );
+  $form['number'] = array(
+    '#type' => 'textfield',
+    '#default_value' => 2,
+    '#size' => 2,
+    '#required' => TRUE,
+    '#title' => t('Number of rows'),
+  );
+  $form['show'] = array(
+    '#type' => 'button',
+    '#value' => t('Show'),
+  );
+  $form['addmore'] = array(
+    '#type' => 'button',
+    '#value' => t('Add 2 more nodes'),
+  );
+  $form['create'] = array(
+    '#type' => 'button',
+    '#value' => t('Save all nodes'),
+  );
+  $form['placeholder']['#value'] = '<div id="multi_node_add_frames"></div>';
+
+  return $form;
+}
+
+/**
+ * Shows the node-tabled form in an iframe
+ */
+function multi_node_add_frame_page($fields) {
+  module_load_include('inc', 'node', 'node.pages');
+  $form = drupal_get_form('multi_node_add_frame', $fields);
+  print theme('multi_node_add_iframe', $form);
+  session_write_close();
+  module_invoke_all('exit');
+  exit();
+}
+
+/**
+ * Shows the status after node creation
+ */
+function multi_node_add_frame_status($node) {
+  $content = t('The node is created. Title: %title , node id: %nid', array('%title' => $node->title, '%nid' => $node->nid));
+  print theme('multi_node_add_iframe', $content);
+  session_write_close();
+  module_invoke_all('exit');
+}
+
+/**
+ * Presents the node creating row form.
+ */
+function multi_node_add_frame($form_state = array(), $fields = array('title')) {
+  $type = str_replace('-', '_', arg(2));
+  $fields = explode(',', $fields);
+  $form = multi_node_widget_form($type, $fields);
+  $form['#attributes'] = array('name' => 'nodeform');
+  $form['createnodes'] = array(
+    '#weight' => 99,
+    '#type' => 'submit',
+    '#value' => t('Create'),
+  );
+  return $form;
+}
+
+/**
+ * Saves the node.
+ */
+function multi_node_add_frame_submit($form, &$form_state) {
+  unset($form_state['values']['form_build_id']);
+  unset($form_state['values']['form_token']);
+  unset($form_state['values']['form_id']);
+  unset($form_state['values']['createnodes']);
+  $type = str_replace('-', '_', arg(2));
+  $node = node_submit($form_state['values']);
+  $node->type = $type;
+  node_save($node);
+  if ($node->nid) {
+    unset($form_state['rebuild']);
+    $form_state['nid'] = $node->nid;
+    $form_state['redirect'] = 'multi_node_add/status/'. arg(2) .'/'. $node->nid;
+  }
+}
+
+
+/**
+ * Generate the input widgets.
+ */
+function multi_node_widget_form($type, $fields_show) {
+  $form = array();
+  $fields = array();
+  if (function_exists('content_fields')) {
+    $fields = content_fields();
+  }
+  $fields += _multi_node_add_non_cck_fields($type);
+
+  foreach ($fields_show as $field_name) {
+    if (isset($fields[$field_name])) {
+      $field = $fields[$field_name];
+      if (isset($field['field_def'])) { // is it our hacked definition?
+        $field_def = (array)$field['field_def'];
+      }
+      else { // no, it's CCK
+        $form_a['fields'] = array('#type' => 'value', '#value' => array($type));
+        $form['#field_info'][$field_name] = $field;
+        $form_state = array();
+        $field_def = (array)content_field_form($form, $form_state, $field);
+      }
+      $form += $field_def;
+    }
+  }
+  return $form;
+}
+
+/**
+ * Copy-pase from _views_bulk_operations_fields_action_non_cck
+ */
+function _multi_node_add_non_cck_fields($type) {
+  module_load_include('inc', 'node', 'node.pages');
+  global $user;
+  $return = array();
+
+  // Get the form definition.
+  $form_state = array('storage' => NULL, 'submitted' => FALSE);
+  $form_id = $type .'_node_form';
+  $form = drupal_retrieve_form($form_id, $form_state, (object)array('type' => $type, 'name' => $user ? $user->name : '', 'nid' => 0));
+  drupal_prepare_form($form_id, $form, $form_state);
+
+  // Iterate on known fields.
+  foreach (array('title', 'body', 'format', 'revision', 'log', 'name', 'date', 'status', 'promote', 'sticky', 'comment') as $field_name) {
+    $path = array_key_path($field_name, $form);
+    if ($path === FALSE) continue;
+    $field_def = array_path($form, array_merge($path, (array)$field_name));
+    if (is_array($field_def) &&
+        (!isset($field_def['#access']) || $field_def['#access']) &&
+        (isset($field_def['#type']) && $field_def['#type'] != 'value' && $field_def['#type'] != 'hidden')
+    ) {
+      $return[$field_name] = array(
+        'field_name' => $field_name,
+        'field_def' => array($field_name => $field_def),
+      );
+    }
+  }
+
+  return $return;
+}
+
+/**
+ * Renders the node form snippets in one row.
+ */
+function theme_multi_node_add_frame($form) {
+  $header = array();
+  $rows = array();
+  foreach ($form as $k => $v) {
+    if (is_array($v) && !empty($v['#title'])) {
+      $header[] = '';
+      $rows[0][] = drupal_render($v);
+      unset($form[$k]);
+    }
+  }
+  $header[] = '';
+  $rows[0][] = drupal_render($form['createnodes']);
+  unset($form['createnodes']);
+  return theme('table', $header, $rows) . drupal_render($form);
+}
+
+/**
+ * Renders a basic HTML page for iframe content.
+ */
+function theme_multi_node_add_iframe($content) {
+  $head = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+  <head>
+'. drupal_get_js() . drupal_get_css() .'</head><body>'. theme('status_messages');
+  $tail = '</body></html>';
+  return $head . $content . $tail;
+}
+
+if (!function_exists('array_key_path')) {
+function array_key_path($needle, $haystack, $forbidden = array(), $path = array()) {
+  foreach ($haystack as $key => $val) {
+    if (in_array($key, $forbidden)) {
+      continue;
+    }
+    if (is_array($val) && is_array($sub = array_key_path($needle, $val, $forbidden, array_merge($path, (array)$key)))) {
+      return $sub;
+    }
+    elseif ($key === $needle) {
+      return $path;
+    }
+  }
+  return FALSE;
+}
+}
+
+if (!function_exists('array_path')) {
+function &array_path(&$array, $path) {
+  $offset =& $array;
+  if ($path) foreach ($path as $index) {
+    $offset =& $offset[$index];
+  }
+  return $offset;
+}
+}

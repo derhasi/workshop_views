@@ -1,0 +1,127 @@
+<?php
+
+// $Id: collapse_text.module,v 1.4.2.3 2008/12/15 15:47:33 pukku Exp $
+
+/**
+ * @file
+ * collapse_text is an input filter that allows text to be collapsible
+ */
+
+/**
+ * Implementation of hook_filter_tips().
+ */
+function collapse_text_filter_tips($delta, $format, $long = false) {
+  if ($long) {
+    return t('Enclose sections of text in [collapse] and [/collapse] to turn them into collapsible sections. If you use [collapse collapsed] and [/collapse], the section will start out collapsed. You may specify a title with [collapse title=some title] (or [collapse collapsed title=some title]). If no title is specified, the title will be taken from the first header (&lt;h1&gt;, &lt;h2&gt;, &lt;h3&gt;, ...) found. In the absence of a header, a default title is used.');
+  }
+  else {
+    return t('Make collapsible text blocks using [collapse] and [/collapse].');
+  }
+}
+
+/**
+ * Implementation of hook_filter().
+ */
+function collapse_text_filter($op, $delta = 0, $format = -1, $text = '') {
+  switch ($op) {
+    case 'list':
+      return array(
+        0 => t('Collapse text')
+      );
+      break;
+      
+    case 'description':
+      return t('Make collapsing text sections');
+      break;
+    
+    case 'settings':
+      // This filter has no user settings.
+      break;
+    
+    case 'no cache':
+      return FALSE;
+      break;
+    
+    case 'prepare':
+      return $text;
+      break;
+      
+    case 'process':
+      return collapse_text_process($text);
+      break;
+    
+    default:
+      return $text;
+      break;
+  }
+}
+
+/**
+ * Provides a layer of encapsulation for the regex call.
+ */
+function collapse_text_process($text) {
+  // Per #259535 and #233877, add ability to specify title
+  // in collapse text. Thanks rivena, Justyn
+  $text = preg_replace_callback('/
+      \[                         # look for an opening bracket
+         collapse                # followed by the word `collapse`
+         (\ collapsed)?          # followed by (optionally) a space and the word `collapsed` (captured)
+         (?:\ title=([^\]]*))?   # followed by (optionally) a space and a title, consisting of any
+                                 # characters except a close bracket (captured)
+      \]                         # followed by a closing bracket
+      (.+?)                      # then capture as few characters as possible until
+      \[\/collapse\]             # a closing "tag", which is a slash followed by `collapse` in brackets
+    /smx',
+    "_collapse_text_replace_callback", $text);
+  return $text;
+}
+
+function _collapse_text_replace_callback($matches) {
+  // 2008-12-15 REMorse (no issue number) added space to make
+  // $collapsed work
+  $collapsed = ($matches[1] == ' collapsed');
+  $title = trim($matches[2]);
+  $interior = $matches[3];
+  
+  if (empty($title)) {
+    // If a title is not supplied, look for a header (<h1>, <h2> ...)
+    // and use it as the title.
+    $h_matches = array();
+    preg_match('/<h\d[^>]*>(.+?)<\/h\d>/smi', $interior, $h_matches);
+    $title = strip_tags($h_matches[1]);
+  }
+  
+  if (empty($title)) {
+    // If there is still no title, provide some default text.
+    // Added call to t() per #256176 yngens
+    $title = t('Use the arrow to expand or collapse this section');
+  }
+  
+  $render_array = array(
+    '#type' => 'fieldset',
+    '#title' => $title,
+    '#collapsible' => true,
+    '#collapsed' => $collapsed,
+  );
+  $render_array['text_contents'] = array(
+    '#type' => 'markup',
+    '#value' => '<div>' . $interior . '</div>',
+  );
+  
+  return drupal_render($render_array);
+}
+
+/**
+ * Implementation of hook_init().
+ *
+ * Due to caching issues, `collapse.js` is not properly added to
+ * a page when the cached version is used. This adds `collapse.js`
+ * to every page. This is not really the right way to solve the
+ * problem, but I don't know that Drupal provides us with the
+ * ability to attach CSS files to input filter caches.
+ *
+ * Per #256354 and #231529. Thanks rolf, sza, jippie1948, Justyn
+ */
+function collapse_text_init() {
+  drupal_add_js('misc/collapse.js', 'core');
+}
