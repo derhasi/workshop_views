@@ -1,0 +1,7 @@
+core = "6.x"
+dependencies[] = "content"
+dependencies[] = "views"
+features[views][] = "m2_plus"
+name = "m2_plus"
+package = "Features"
+project = "m2_plus"

@@ -1,0 +1,3 @@
+<?php
+
+include_once('m1_plusplus.features.inc');
