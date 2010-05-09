@@ -1,4 +1,4 @@
 filename = 000
-description = "Startpunkt für den Views 2 Workshop für Anfänger"
-modules = block book color comment dblog filter help menu node system taxonomy update user admin_menu jcalendar content nodereference number optionwidgets text userreference collapse_text date date_api date_popup date_timezone demo filefield imageapi imageapi_gd imagecache imagecache_ui imagefield lightbox2 markdown views_ui views_attach views_cycle calendar fieldgroup views vertical_tabs
+description = "Default settings and content for workshop"
+modules = block book color comment dblog filter help menu node system taxonomy update upload user admin_menu jcalendar content nodereference number optionwidgets text userreference collapse_text date date_api date_popup date_timezone demo filefield imageapi imageapi_gd imagecache imagecache_ui imagefield lightbox2 markdown views_ui views_attach views_cycle calendar fieldgroup views vertical_tabs
 version = 1.1
